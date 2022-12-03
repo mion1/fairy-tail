@@ -82,7 +82,7 @@ void accept_new_connection()
 {
   struct sockaddr_in incoming;
   struct hostent *hp;
-  int length, new_socket, socket, dummy;
+  int length, new_socket, socket, dummy, n1, n2, n3, n4;
   char *resolved_address;
   struct player *p;
   char *oldstack;
@@ -116,5 +116,28 @@ void accept_new_connection()
   p->fd = new_socket;
 
   strncpy(p->num_addr, inet_ntoa(incoming.sin_addr, MAXINET_ADDR - 2));
-  strncpy(p->inet_addr, p->num_addr, MAXINET_ADDR);
+  strncpy(p->inet_addr, p->num_addr, MAXINET_ADDR - 2);
+
+  sscanf(p->num_addr, "%d.%d.%d.%d", &n1, &n2, &n3, &n4);
+  if(do_banish(p)) {       /* check if banished */
+    write(new_socket, banish_msg.where, banish_msg.length);
+    out_current += banish_msg.length;
+    out_pack_current++;
+    destroy_player(p);
+    return;
+  }
+
+  else { /* check if splat */
+    if((splat_timeout > time(0)) && n1 == splat1 && n2 == splat2 
+        && n3 == splat3) {    /* if w.x.y match in w.x.y.z then destroy */
+      write(new_socket, splat_msg.where, splat_msg.length);
+      out_current += splat_msg.length;
+      out_pack_current++;
+      destroy_player(p);
+      return;
+    }
+    else 
+      connect_to_prog(p);
+  }
+  current_player = 0;
 }
